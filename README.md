@@ -1,130 +1,172 @@
-# 🔗 FerroFy — Distributed Blockchain Node Network
+# FerroFy - Local WiFi Blockchain System
 
-> **HackIndia Spark 7 | North Region | Apex**  
-> A Real Terminal-Based P2P Blockchain Built From Scratch In Python
+FerroFy is a three-node Python system for one local WiFi network.
 
----
-
-## 🚀 How It Works
-
-```
-[Run main.pyw]
-      │
-      ├─ Verify Local Chain (Genesis → Tip, Block-By-Block SHA256)
-      │
-      ├─ Scan LAN For Peers On Port 5000
-      │
-      ├── Peers Found?  ──► RX Mode (Sync + Majority Recovery)
-      │
-      └── No Peers? ──────► TX Mode (Origin Node, Mine Blocks)
+```text
+User Node  ->  Doc Node  ->  Data Node Blockchain Network
 ```
 
----
+## Nodes
 
-## 🏗 Architecture
+| Node | UI | Job |
+| --- | --- | --- |
+| User Node | `Files/Python/User_Node.pyw` GUI | Enters data and sends it to one Doc Node |
+| Doc Node | `Files/Python/Doc_Node.pyw` GUI | Reviews User data and clicks Yes / No |
+| Data Node | `main.py` option 3, or `Files/Python/Data_Node.py` | Stores approved records as hash-linked blocks and syncs with other Data Nodes |
 
-| File | Role |
-|---|---|
-| `main.pyw` | Rich Terminal Launcher — Network Scan, Chain Inspect, Mode Decision |
-| `Files/Python/TX.py` | Transmitter Node — Genesis, Mining, Peer Broadcast |
-| `Files/Python/RX.py` | Receiver Node — Discovery, Majority Consensus, Chain Recovery |
-| `Files/Python/Chain_Verify.py` | Shared Library — SHA256 Verification, Chain Validation |
-| `Hash.py` | Utility — SHA256 / SHA512 / File Hash |
-| `Blocks/` | Storage — One `.json` File Per Block |
+The old two-node TX/RX design was removed so the project now follows only this
+three-node architecture.
 
----
+## Data Fields
 
-## 🔒 Block Integrity Verification
+The User Node asks for:
 
-Every Block File Is Verified **Before** Being Added Or Mined:
+- Name
+- Problem
+- Symptoms
+- Disease
+- Date
+- Solution
+- Extra Notes
 
-```
-SHA256(Block_File_Contents)  ──► Compared To Block["Hash"]
-Block["Previous_Hash"]       ──► Must Match SHA256 Of Previous Block Data
-Block["Index"]               ──► Must Be Sequential (0, 1, 2, ...)
-```
+## Default Ports
 
-Chain Is Walked **From Genesis (Block 0) To The Tip** Every Time A New Block Is Mined Or Received.
+| Node | Port |
+| --- | --- |
+| User -> Doc Node | `5000` |
+| Doc Node -> Data Node | `5001` |
 
----
+Nodes do not ask for their own IP or own port. Each node listens automatically
+on all local network interfaces, and setup only asks for the remote machine to
+connect to.
 
-## 🌐 Peer-To-Peer Network
+## Running On Local WiFi
 
-- **Port**: `5000` (TCP)
-- **Handshake**: `"Mine_RX"` ↔ `"Mine_TX"` Token Exchange
-- **Discovery**: Full LAN Subnet Scan (`x.x.x.1 → x.x.x.254`)
-- **Broadcast**: TX Sends Each Mined Block To All Connected Peers Instantly
+Use the WiFi IPv4 address of each machine. The apps show the detected WiFi IP
+when they start. On Windows you can also run:
 
----
-
-## ⚕ Majority Consensus Recovery
-
-When A Node Detects Missing Or Corrupt Blocks:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  1. Connect To All N Available Peers                    │
-│  2. Request The Full Chain From All N Nodes             │
-│  3. For Each Block Index (0 → Tip):                     │
-│     ─ Collect Responses From All Peers                  │
-│     ─ Apply 50% + 1 Majority Vote                       │
-│     ─ Winner Block Is Validated (Hash + Link)           │
-│     ─ Written To Disk Only If Valid                     │
-│  4. Corrupt / Missing Blocks Are Replaced               │
-│  5. Node Continues Normally After Recovery              │
-└─────────────────────────────────────────────────────────┘
+```bash
+ipconfig
 ```
 
-> **Example:** If 5 Nodes Are Connected And 3 Agree On Block 7,  
-> Block 7 From That Majority Is Accepted. (3 > 5/2 = Majority)
+Look for the IPv4 address under the active WiFi adapter.
 
----
+## 1. Start Data Nodes
 
-## 📦 Block Structure
+Run from the project folder:
+
+```bash
+python main.py
+```
+
+Choose `3`.
+
+It asks:
+
+```text
+How many Data Node peers to connect [0] >
+Data Node peer 1 IP / host [port 5001] >
+Block folder [Blocks/DataNode_5001] >
+```
+
+For another Data Node on another machine, use that machine's WiFi IP. The port
+stays `5001`.
+
+```text
+How many Data Node peers to connect [0] > 1
+Data Node peer 1 IP / host [port 5001] > 192.168.1.25
+Block folder [Blocks/DataNode_5001] >
+```
+
+## 2. Start Doc Node
+
+Run:
+
+```bash
+pythonw Files/Python/Doc_Node.pyw
+```
+
+You can also run `python main.py` and choose `2`.
+
+The Doc Node asks:
+
+```text
+How Many Data Nodes: <number>
+Data Node 1: <data node WiFi IP>
+```
+
+When User data arrives, the Doc GUI shows the fields and waits for:
+
+- `Yes / Approve`: stores an audit JSON in `Files/Documents/` and forwards to Data Nodes.
+- `No / Reject`: sends rejection back to the User Node.
+
+## 3. Start User Node
+
+Run:
+
+```bash
+pythonw Files/Python/User_Node.pyw
+```
+
+or run `python main.py` and choose `1`.
+
+The User Node asks only for:
+
+```text
+Doc Node IP / Host
+```
+
+Fill the data fields and click `Send To Doc Node`. If the Doc Node is not
+online yet, the User Node retries automatically every few seconds until it
+connects or you click `Stop Retry`.
+
+## Blockchain Behavior
+
+Data Nodes do not mine and do not use nonce values. A block is simply:
 
 ```json
 {
-    "Index":         3,
-    "Timestamp":     1777311032.703491,
-    "Previous_Hash": "abc123...64-char-hex",
-    "Hash":          "def456...64-char-hex",
-    "Data": {
-        "Message":    "Hello Blockchain",
-        "Node":       "192.168.1.10",
-        "Block_Time": "2026-04-27T12:00:00Z"
-    }
+  "schema": "ferrofy.localwifi.block.v1",
+  "index": 1,
+  "timestamp": "2026-04-28T16:30:00Z",
+  "previous_hash": "abc123...",
+  "creator": "doc:192.168.1.10:5000",
+  "data": {
+    "kind": "approved_doc_record",
+    "doc_id": "...",
+    "document": {}
+  },
+  "hash": "sha256-of-the-block"
 }
 ```
 
----
+Each Data Node checks:
 
-## ▶ Running
+- block hash matches the block contents
+- block index is sequential
+- `previous_hash` matches the previous block
+- peer Data Nodes have the same chain
 
-```bash
-python main.pyw
+If a Data Node finds a bad or different block, it asks connected Data Nodes for
+their chains. Valid chains are grouped by block hashes, and the chain with the
+most votes wins. If votes tie, the node picks the longest valid chain and uses a
+deterministic hash tie-break.
+
+Manual commands inside a Data Node:
+
+```text
+data> status
+data> chain
+data> peers
+data> repair
+data> quit
 ```
 
-- **First Run / No Peers Detected** → TX Mode: Creates Genesis Block, Accepts Connections
-- **Peers Detected On LAN** → RX Mode: Syncs Chain, Recovers If Needed, Receives New Blocks
+## Requirements
 
----
+- Python 3.8+
+- Standard library only: `socket`, `json`, `hashlib`, `threading`, `tkinter`
 
-## 🛠 Requirements
+## License
 
-- Python `3.8+`
-- Standard Library Only (`socket`, `hashlib`, `json`, `threading`, `os`, `time`)
-- **No External Packages Required**
-
----
-
-## 👥 Team
-
-| Name | Role |
-|---|---|
-| **FerroFy** | Lead Architect, Blockchain Core |
-
----
-
-## 📄 License
-
-MIT — See `LICENSE`
+MIT - see `LICENSE`.
